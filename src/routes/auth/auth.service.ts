@@ -5,9 +5,11 @@ import { RegisterBodyType, SendOTPBodyType } from 'src/routes/auth/auth.model';
 import { AuthRepository } from 'src/routes/auth/auth.repo';
 import { RolesService } from 'src/routes/auth/roles.service';
 import envConfig from 'src/shared/config';
+import { TypeOfVerificationCode } from 'src/shared/constants/auth.constant';
 import { generateOTP, isUniqueConstraintPrismaError } from 'src/shared/helpers';
 import { UserType } from 'src/shared/models/shared-user.model';
 import { SharedUserRepository } from 'src/shared/repositories/shared-user.repo';
+import { EmailService } from 'src/shared/services/email.service';
 import { HashingService } from 'src/shared/services/hashing.service';
 
 @Injectable()
@@ -17,9 +19,34 @@ export class AuthService {
     private readonly rolesService: RolesService,
     private readonly authRepository: AuthRepository,
     private readonly sharedUserRepository: SharedUserRepository,
+    private readonly emailService: EmailService,
   ) {}
   async register(body: RegisterBodyType): Promise<Omit<UserType, 'password' | 'totpSecret'>> {
     try {
+      const verificationCode = await this.authRepository.findUniqueVerificationCode({
+        email: body.email,
+        code: body.code,
+        type: TypeOfVerificationCode.REGISTER,
+      });
+
+      if (!verificationCode) {
+        throw new UnprocessableEntityException([
+          {
+            message: 'Mã OTP không hợp lệ',
+            path: 'code',
+          },
+        ]);
+      }
+
+      if (verificationCode.expiresAt < new Date()) {
+        throw new UnprocessableEntityException([
+          {
+            message: 'Mã OTP đã hết hạn',
+            path: 'code',
+          },
+        ]);
+      }
+
       const clientRoleId = await this.rolesService.getClientRoleId();
       const hashedPassword = await this.hashingService.hash(body.password);
 
@@ -60,7 +87,6 @@ export class AuthService {
 
     // Tạo OTP
     const code = generateOTP();
-
     const verificationCode = await this.authRepository.createVerificationCode({
       email: body.email,
       code,
@@ -69,6 +95,19 @@ export class AuthService {
     });
 
     // Gửi mã OTP
+    const { error } = await this.emailService.sendOTP({
+      email: body.email,
+      code,
+    });
+
+    if (error) {
+      throw new UnprocessableEntityException([
+        {
+          message: 'Gửi mã OTP thất bại',
+          path: 'email',
+        },
+      ]);
+    }
     return verificationCode;
   }
 
