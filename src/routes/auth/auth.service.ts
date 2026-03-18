@@ -1,8 +1,13 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { RegisterBodyType, UserType } from 'src/routes/auth/auth.model';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { addMilliseconds } from 'date-fns';
+import ms from 'ms';
+import { RegisterBodyType, SendOTPBodyType } from 'src/routes/auth/auth.model';
 import { AuthRepository } from 'src/routes/auth/auth.repo';
 import { RolesService } from 'src/routes/auth/roles.service';
-import { isUniqueConstraintPrismaError } from 'src/shared/helpers';
+import envConfig from 'src/shared/config';
+import { generateOTP, isUniqueConstraintPrismaError } from 'src/shared/helpers';
+import { UserType } from 'src/shared/models/shared-user.model';
+import { SharedUserRepository } from 'src/shared/repositories/shared-user.repo';
 import { HashingService } from 'src/shared/services/hashing.service';
 
 @Injectable()
@@ -11,6 +16,7 @@ export class AuthService {
     private readonly hashingService: HashingService,
     private readonly rolesService: RolesService,
     private readonly authRepository: AuthRepository,
+    private readonly sharedUserRepository: SharedUserRepository,
   ) {}
   async register(body: RegisterBodyType): Promise<Omit<UserType, 'password' | 'totpSecret'>> {
     try {
@@ -26,10 +32,44 @@ export class AuthService {
       });
     } catch (error) {
       if (isUniqueConstraintPrismaError(error)) {
-        throw new ConflictException('Email đã tồn tại');
+        throw new UnprocessableEntityException([
+          {
+            message: 'Email đã tồn tại',
+            path: 'email',
+          },
+        ]);
       }
       throw error;
     }
+  }
+
+  async sendOTP(body: SendOTPBodyType) {
+    // Kiểm tra email đã tồn tại trong database chưa
+    const user = await this.sharedUserRepository.findUnique({
+      email: body.email,
+    });
+
+    if (user) {
+      throw new UnprocessableEntityException([
+        {
+          message: 'Email đã tồn tại',
+          path: 'email',
+        },
+      ]);
+    }
+
+    // Tạo OTP
+    const code = generateOTP();
+
+    const verificationCode = await this.authRepository.createVerificationCode({
+      email: body.email,
+      code,
+      type: body.type,
+      expiresAt: addMilliseconds(new Date(), ms(envConfig.OTP_EXPIRES_IN)),
+    });
+
+    // Gửi mã OTP
+    return verificationCode;
   }
 
   // async login(body: any) {
