@@ -21,8 +21,8 @@ export class EmailService {
       from: 'NestJS Ecommerce <onboarding@resend.dev>',
       to: [payload.email],
       subject,
-      react: <OTPEmail validationCode={payload.code} title={subject} />
-      // html: otpTemplate.replaceAll('{{subject}}', subject).replaceAll('{{code}}', payload.code),
+      // react: <OTPEmail validationCode={payload.code} title={subject} />
+      html: otpTemplate.replaceAll('{{subject}}', subject).replaceAll('{{code}}', payload.code),
     });
   }
 }
