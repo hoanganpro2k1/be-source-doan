@@ -407,7 +407,8 @@ export const ModelName = {
   Review: 'Review',
   ReviewMedia: 'ReviewMedia',
   PaymentTransaction: 'PaymentTransaction',
-  Message: 'Message'
+  Message: 'Message',
+  UserOwnership: 'UserOwnership'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -423,7 +424,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "language" | "user" | "userTranslation" | "verificationCode" | "device" | "refreshToken" | "permission" | "role" | "product" | "productTranslation" | "category" | "categoryTranslation" | "sKU" | "brand" | "brandTranslation" | "cartItem" | "productSKUSnapshot" | "order" | "payment" | "websocket" | "review" | "reviewMedia" | "paymentTransaction" | "message"
+    modelProps: "language" | "user" | "userTranslation" | "verificationCode" | "device" | "refreshToken" | "permission" | "role" | "product" | "productTranslation" | "category" | "categoryTranslation" | "sKU" | "brand" | "brandTranslation" | "cartItem" | "productSKUSnapshot" | "order" | "payment" | "websocket" | "review" | "reviewMedia" | "paymentTransaction" | "message" | "userOwnership"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2203,6 +2204,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    UserOwnership: {
+      payload: Prisma.$UserOwnershipPayload<ExtArgs>
+      fields: Prisma.UserOwnershipFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UserOwnershipFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UserOwnershipFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        findFirst: {
+          args: Prisma.UserOwnershipFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UserOwnershipFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        findMany: {
+          args: Prisma.UserOwnershipFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>[]
+        }
+        create: {
+          args: Prisma.UserOwnershipCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        createMany: {
+          args: Prisma.UserOwnershipCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UserOwnershipCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>[]
+        }
+        delete: {
+          args: Prisma.UserOwnershipDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        update: {
+          args: Prisma.UserOwnershipUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        deleteMany: {
+          args: Prisma.UserOwnershipDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UserOwnershipUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UserOwnershipUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>[]
+        }
+        upsert: {
+          args: Prisma.UserOwnershipUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserOwnershipPayload>
+        }
+        aggregate: {
+          args: Prisma.UserOwnershipAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUserOwnership>
+        }
+        groupBy: {
+          args: Prisma.UserOwnershipGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserOwnershipGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UserOwnershipCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserOwnershipCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2373,6 +2448,11 @@ export const ProductScalarFieldEnum = {
   brandId: 'brandId',
   images: 'images',
   variants: 'variants',
+  demoUrl: 'demoUrl',
+  githubUrl: 'githubUrl',
+  documentation: 'documentation',
+  version: 'version',
+  techStack: 'techStack',
   createdById: 'createdById',
   updatedById: 'updatedById',
   deletedById: 'deletedById',
@@ -2605,6 +2685,20 @@ export const MessageScalarFieldEnum = {
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const UserOwnershipScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  productId: 'productId',
+  skuId: 'skuId',
+  downloadUrl: 'downloadUrl',
+  downloadCount: 'downloadCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserOwnershipScalarFieldEnum = (typeof UserOwnershipScalarFieldEnum)[keyof typeof UserOwnershipScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2932,6 +3026,7 @@ export type GlobalOmitConfig = {
   reviewMedia?: Prisma.ReviewMediaOmit
   paymentTransaction?: Prisma.PaymentTransactionOmit
   message?: Prisma.MessageOmit
+  userOwnership?: Prisma.UserOwnershipOmit
 }
 
 /* Types for Logging */

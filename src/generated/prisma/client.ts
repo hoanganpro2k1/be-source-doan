@@ -159,3 +159,8 @@ export type PaymentTransaction = Prisma.PaymentTransactionModel
  * 
  */
 export type Message = Prisma.MessageModel
+/**
+ * Model UserOwnership
+ * 
+ */
+export type UserOwnership = Prisma.UserOwnershipModel

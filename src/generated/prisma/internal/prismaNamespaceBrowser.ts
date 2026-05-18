@@ -74,7 +74,8 @@ export const ModelName = {
   Review: 'Review',
   ReviewMedia: 'ReviewMedia',
   PaymentTransaction: 'PaymentTransaction',
-  Message: 'Message'
+  Message: 'Message',
+  UserOwnership: 'UserOwnership'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -224,6 +225,11 @@ export const ProductScalarFieldEnum = {
   brandId: 'brandId',
   images: 'images',
   variants: 'variants',
+  demoUrl: 'demoUrl',
+  githubUrl: 'githubUrl',
+  documentation: 'documentation',
+  version: 'version',
+  techStack: 'techStack',
   createdById: 'createdById',
   updatedById: 'updatedById',
   deletedById: 'deletedById',
@@ -456,6 +462,20 @@ export const MessageScalarFieldEnum = {
 } as const
 
 export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
+
+
+export const UserOwnershipScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  productId: 'productId',
+  skuId: 'skuId',
+  downloadUrl: 'downloadUrl',
+  downloadCount: 'downloadCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserOwnershipScalarFieldEnum = (typeof UserOwnershipScalarFieldEnum)[keyof typeof UserOwnershipScalarFieldEnum]
 
 
 export const SortOrder = {
