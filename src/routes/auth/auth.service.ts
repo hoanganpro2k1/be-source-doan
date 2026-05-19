@@ -1,7 +1,7 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { HttpException, Injectable, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common';
 import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
-import { LoginBodyType, RegisterBodyType, SendOTPBodyType } from 'src/routes/auth/auth.model';
+import { LoginBodyType, RefreshTokenBodyType, RegisterBodyType, SendOTPBodyType } from 'src/routes/auth/auth.model';
 import { AuthRepository } from 'src/routes/auth/auth.repo';
 import { RolesService } from 'src/routes/auth/roles.service';
 import envConfig from 'src/shared/config';
@@ -53,13 +53,13 @@ export class AuthService {
       const clientRoleId = await this.rolesService.getClientRoleId();
       const hashedPassword = await this.hashingService.hash(body.password);
 
-      return await this.authRepository.createUser({
+      return (await this.authRepository.createUser({
         email: body.email,
         name: body.name,
         phoneNumber: body.phoneNumber,
         password: hashedPassword,
         roleId: clientRoleId,
-      });
+      })) as any;
     } catch (error) {
       if (isUniqueConstraintPrismaError(error)) {
         throw new UnprocessableEntityException([
@@ -156,7 +156,6 @@ export class AuthService {
 
   async generateTokens({ userId, deviceId, roleId, roleName }: AccessTokenPayloadCreate) {
     const accessToken = this.tokenService.signAccessToken({ userId, deviceId, roleId, roleName });
-    console.log('userId', userId);
     const refreshToken = this.tokenService.signRefreshToken({ userId });
     const decodedRefreshToken = await this.tokenService.verifyRefreshToken(refreshToken);
 
@@ -169,33 +168,48 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // async refreshToken(refreshToken: string) {
-  //   try {
-  //     // 1. Kiểm tra refreshToken có hợp lệ không
-  //     const { userId } = await this.tokenService.verifyRefreshToken(refreshToken);
-  //     // 2. Kiểm tra refreshToken có tồn tại trong database không
-  //     await this.prismaService.refreshToken.findUniqueOrThrow({
-  //       where: {
-  //         token: refreshToken,
-  //       },
-  //     });
-  //     // 3. Xóa refreshToken cũ
-  //     await this.prismaService.refreshToken.delete({
-  //       where: {
-  //         token: refreshToken,
-  //       },
-  //     });
-  //     // 4. Tạo mới accessToken và refreshToken
-  //     return await this.generateTokens({ userId });
-  //   } catch (error) {
-  //     // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
-  //     // refresh token của họ đã bị đánh cắp
-  //     if (isNotFoundPrismaError(error)) {
-  //       throw new UnauthorizedException('Refresh token has been revoked');
-  //     }
-  //     throw new UnauthorizedException();
-  //   }
-  // }
+  async refreshToken({ refreshToken, userAgent, ip }: RefreshTokenBodyType & { userAgent: string; ip: string }) {
+    try {
+      // 1. Kiểm tra refreshToken có hợp lệ không
+      const { userId } = await this.tokenService.verifyRefreshToken(refreshToken);
+      // 2. Kiểm tra refreshToken có tồn tại trong database không
+      const refreshTokenInDb = await this.authRepository.findUniqueRefreshTokenIncludeUserRole({
+        token: refreshToken,
+      });
+
+      if (!refreshTokenInDb) {
+        // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
+        // refresh token của họ đã bị đánh cắp
+        // throw RefreshTokenAlreadyUsedException;
+        throw new UnauthorizedException('Refresh token đã được sử dụng');
+      }
+
+      const {
+        deviceId,
+        user: { roleId, name: roleName },
+      } = refreshTokenInDb;
+      // 3. Cập nhật device
+      const $updateDevice = this.authRepository.updateDevice(deviceId, {
+        ip,
+        userAgent,
+      });
+
+      // 4. Xóa refreshToken cũ
+      const $deleteRefreshToken = this.authRepository.deleteRefreshToken({
+        token: refreshToken,
+      });
+
+      // 5. Tạo mới accessToken và refreshToken
+      const $tokens = this.generateTokens({ userId, roleId, roleName, deviceId });
+      const [, , tokens] = await Promise.all([$updateDevice, $deleteRefreshToken, $tokens]);
+      return tokens;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new UnauthorizedException();
+    }
+  }
 
   // async logout(refreshToken: string) {
   //   try {
