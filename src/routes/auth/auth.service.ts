@@ -6,7 +6,7 @@ import { AuthRepository } from 'src/routes/auth/auth.repo';
 import { RolesService } from 'src/routes/auth/roles.service';
 import envConfig from 'src/shared/config';
 import { TypeOfVerificationCode } from 'src/shared/constants/auth.constant';
-import { generateOTP, isUniqueConstraintPrismaError } from 'src/shared/helpers';
+import { generateOTP, isNotFoundPrismaError, isUniqueConstraintPrismaError } from 'src/shared/helpers';
 import { UserType } from 'src/shared/models/shared-user.model';
 import { SharedUserRepository } from 'src/shared/repositories/shared-user.repo';
 import { EmailService } from 'src/shared/services/email.service';
@@ -172,6 +172,7 @@ export class AuthService {
     try {
       // 1. Kiểm tra refreshToken có hợp lệ không
       const { userId } = await this.tokenService.verifyRefreshToken(refreshToken);
+
       // 2. Kiểm tra refreshToken có tồn tại trong database không
       const refreshTokenInDb = await this.authRepository.findUniqueRefreshTokenIncludeUserRole({
         token: refreshToken,
@@ -188,6 +189,7 @@ export class AuthService {
         deviceId,
         user: { roleId, name: roleName },
       } = refreshTokenInDb;
+
       // 3. Cập nhật device
       const $updateDevice = this.authRepository.updateDevice(deviceId, {
         ip,
@@ -211,24 +213,29 @@ export class AuthService {
     }
   }
 
-  // async logout(refreshToken: string) {
-  //   try {
-  //     // 1. Kiểm tra refreshToken có hợp lệ không
-  //     await this.tokenService.verifyRefreshToken(refreshToken);
-  //     // 2. Xóa refreshToken trong database
-  //     await this.prismaService.refreshToken.delete({
-  //       where: {
-  //         token: refreshToken,
-  //       },
-  //     });
-  //     return { message: 'Logout successfully' };
-  //   } catch (error) {
-  //     // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
-  //     // refresh token của họ đã bị đánh cắp
-  //     if (isNotFoundPrismaError(error)) {
-  //       throw new UnauthorizedException('Refresh token has been revoked');
-  //     }
-  //     throw new UnauthorizedException();
-  //   }
-  // }
+  async logout(refreshToken: string) {
+    try {
+      // 1. Kiểm tra refreshToken có hợp lệ không
+      await this.tokenService.verifyRefreshToken(refreshToken);
+
+      // 2. Xóa refreshToken trong database
+      const deleteRefreshToken = await this.authRepository.deleteRefreshToken({
+        token: refreshToken,
+      });
+
+      // 3. Cập nhật device là đã logout
+      await this.authRepository.updateDevice(deleteRefreshToken.deviceId, {
+        isActive: false,
+      });
+
+      return { message: 'Đã đăng xuất thành công' };
+    } catch (error) {
+      // Trường hợp đã refresh token rồi, hãy thông báo cho user biết
+      // refresh token của họ đã bị đánh cắp
+      if (isNotFoundPrismaError(error)) {
+        throw new UnauthorizedException('Refresh token đã được sử dụng');
+      }
+      throw new UnauthorizedException();
+    }
+  }
 }

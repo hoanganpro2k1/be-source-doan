@@ -88,6 +88,8 @@ export const RoleSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
+export const LogoutBodySchema = RefreshTokenBodySchema;
+
 export type RegisterBodyType = z.infer<typeof RegisterBodySchema>;
 export type RegisterResType = z.infer<typeof RegisterResSchema>;
 export type VerificationCodeType = z.infer<typeof VerificationCode>;
@@ -98,3 +100,4 @@ export type RefreshTokenType = z.infer<typeof RefreshTokenSchema>;
 export type RefreshTokenBodyType = z.infer<typeof RefreshTokenBodySchema>;
 export type RefreshTokenResType = LoginResType;
 export type DeviceType = z.infer<typeof DeviceSchema>;
+export type LogoutBodyType = RefreshTokenBodyType;
