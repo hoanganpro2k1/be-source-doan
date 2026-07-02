@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Auth, google } from 'googleapis';
+import { google } from 'googleapis';
 import { GoogleUserInfoError } from 'src/routes/auth/auth.error';
 import { GoogleAuthStateType } from 'src/routes/auth/auth.model';
 import { AuthRepository } from 'src/routes/auth/auth.repo';
@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class GoogleService {
-  private oauth2Client: Auth.OAuth2Client;
+  private oauth2Client: InstanceType<typeof google.auth.OAuth2>;
 
   constructor(
     private readonly authRepository: AuthRepository,

@@ -379,5 +379,5 @@ const variants: Variant[] = [
 ];
 
 // Test hàm
-const skus = generateSKUs(variants);
+const skus = generateSKUs(data.product.variants);
 console.log(JSON.stringify(skus));

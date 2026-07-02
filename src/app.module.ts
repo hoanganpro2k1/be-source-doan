@@ -20,6 +20,8 @@ import { CategoryModule } from 'src/routes/category/category.module';
 import { CategoryTranslationModule } from 'src/routes/category/category-translation/category-translation.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import path from 'path';
+import { ProductModule } from 'src/routes/product/product.module';
+import { ProductTranslationModule } from 'src/routes/product/product-translation/product-translation.module';
 
 @Module({
   imports: [
@@ -44,8 +46,8 @@ import path from 'path';
     BrandTranslationModule,
     CategoryModule,
     CategoryTranslationModule,
-    // ProductModule,
-    // ProductTranslationModule,
+    ProductModule,
+    ProductTranslationModule,
     // CartModule,
     // OrderModule,
     // PaymentModule,
