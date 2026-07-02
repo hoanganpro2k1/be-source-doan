@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:18.3
+    container_name: be_source_doan_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: be_source_doan
+    ports:
+      - "5432:5432" # Nếu bị trùng cổng 5432 ở máy local, bạn có thể đổi thành "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:
+
+# Hướng dẫn chạy Docker:
+# docker compose down -v
+# docker compose up -d
