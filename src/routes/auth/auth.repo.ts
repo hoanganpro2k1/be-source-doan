@@ -50,7 +50,7 @@ export class AuthRepository {
         code: payload.code,
         expiresAt: payload.expiresAt,
       },
-    }) as any;
+    });
   }
 
   findUniqueVerificationCode(
@@ -65,7 +65,7 @@ export class AuthRepository {
   ): Promise<VerificationCodeType | null> {
     return this.prismaService.verificationCode.findUnique({
       where: uniqueValue,
-    }) as any;
+    });
   }
 
   createRefreshToken(data: { token: string; userId: number; expiresAt: Date; deviceId: number }) {
@@ -136,6 +136,6 @@ export class AuthRepository {
   ): Promise<VerificationCodeType> {
     return this.prismaService.verificationCode.delete({
       where: uniqueValue,
-    }) as any;
+    });
   }
 }

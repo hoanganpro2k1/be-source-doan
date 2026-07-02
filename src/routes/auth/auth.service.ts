@@ -95,7 +95,12 @@ export class AuthService {
           },
         }),
       ]);
-      return user;
+      return {
+        ...user,
+        deletedAt: user.deletedAt?.toISOString() ?? null,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      };
     } catch (error) {
       if (isUniqueConstraintPrismaError(error)) {
         throw EmailAlreadyExistsException;
