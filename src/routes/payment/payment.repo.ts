@@ -11,7 +11,7 @@ import { OrderIncludeProductSKUSnapshotType } from 'src/shared/models/shared-ord
 import { PrismaService } from 'src/shared/services/prisma.service';
 
 @Injectable()
-@SerializeAll()
+@SerializeAll(['getTotalPrice'])
 export class PaymentRepo {
   constructor(
     private readonly prismaService: PrismaService,
@@ -20,6 +20,7 @@ export class PaymentRepo {
 
   private getTotalPrice(orders: OrderIncludeProductSKUSnapshotType[]): number {
     return orders.reduce((total, order) => {
+      console.log('order-items: ', order.items);
       const orderTotal = order.items.reduce((totalPrice, productSku) => {
         return totalPrice + productSku.skuPrice * productSku.quantity;
       }, 0);
@@ -83,12 +84,18 @@ export class PaymentRepo {
           },
         },
       });
+
+      console.log('payment: ', payment);
       if (!payment) {
         throw new BadRequestException(`Cannot find payment with id ${paymentId}`);
       }
       const userId = payment.orders[0].userId;
       const { orders } = payment;
+
+      console.log('orders: ', orders);
       const totalPrice = this.getTotalPrice(orders as any);
+
+      console.log('totalPrice: ', totalPrice);
       if (totalPrice !== body.transferAmount) {
         throw new BadRequestException(`Price not match, expected ${totalPrice} but got ${body.transferAmount}`);
       }

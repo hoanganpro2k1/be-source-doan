@@ -114,7 +114,7 @@ export class ProductRepo {
           orders: {
             where: {
               deletedAt: null,
-              status: 'DELIVERED',
+              // status: 'DELIVERED',
             },
           },
         },
