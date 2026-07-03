@@ -7,13 +7,13 @@ import { ApiSecurity } from '@nestjs/swagger';
 import { PaymentService } from 'src/routes/payment/payment.service';
 
 @Controller('payment')
-// @ApiSecurity('payment-api-key')
+@ApiSecurity('payment-api-key')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('/receiver')
   @ZodResponse({ type: MessageResDTO })
-  // @Auth(['PaymentAPIKey'])
+  @Auth(['PaymentAPIKey'])
   receiver(@Body() body: WebhookPaymentBodyDTO) {
     return this.paymentService.receiver(body);
   }
