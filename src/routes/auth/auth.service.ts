@@ -2,12 +2,14 @@ import { HttpException, Injectable, UnauthorizedException, UnprocessableEntityEx
 import { addMilliseconds } from 'date-fns';
 import ms from 'ms';
 import {
+  AdminMustUseAdminLoginException,
   EmailAlreadyExistsException,
   EmailNotFoundException,
   FailedToSendOTPException,
   InvalidOTPException,
   InvalidTOTPAndCodeException,
   InvalidTOTPException,
+  NotAdminAccountException,
   OTPExpiredException,
   RefreshTokenAlreadyUsedException,
   TOTPAlreadyEnabledException,
@@ -27,6 +29,7 @@ import envConfig from 'src/shared/config';
 import { TypeOfVerificationCode, TypeOfVerificationCodeType } from 'src/shared/constants/auth.constant';
 import { InvalidPasswordException } from 'src/shared/error';
 import { generateOTP, isNotFoundPrismaError, isUniqueConstraintPrismaError } from 'src/shared/helpers';
+import { RoleName } from 'src/shared/constants/role.constant';
 import { SharedRoleRepository } from 'src/shared/repositories/shared-role.repo';
 import { SharedUserRepository } from 'src/shared/repositories/shared-user.repo';
 import { TwoFactorService } from 'src/shared/services/2fa.service';
@@ -158,7 +161,17 @@ export class AuthService {
       throw InvalidPasswordException;
     }
 
-    // 2. Nếu user đã bật mã 2FA thì kiểm tra mã 2FA TOTP Code hoặc OTP Code (email)
+    // 2. Chặn đăng nhập sai khu vực: Admin phải dùng form /admin/login,
+    //    tài khoản không phải Admin không được đăng nhập ở form /admin/login.
+    const isAdminAccount = user.role.name === RoleName.Admin;
+    if (body.loginContext === 'admin' && !isAdminAccount) {
+      throw NotAdminAccountException;
+    }
+    if (body.loginContext === 'client' && isAdminAccount) {
+      throw AdminMustUseAdminLoginException;
+    }
+
+    // 4. Nếu user đã bật mã 2FA thì kiểm tra mã 2FA TOTP Code hoặc OTP Code (email)
     if (user.totpSecret) {
       // Nếu không có mã TOTP Code và Code thì thông báo cho client biết
       if (!body.totpCode && !body.code) {
@@ -185,14 +198,14 @@ export class AuthService {
       }
     }
 
-    // 3. Tạo mới device
+    // 5. Tạo mới device
     const device = await this.authRepository.createDevice({
       userId: user.id,
       userAgent: body.userAgent,
       ip: body.ip,
     });
 
-    // 4. Tạo mới accessToken và refreshToken
+    // 6. Tạo mới accessToken và refreshToken
     const tokens = await this.generateTokens({
       userId: user.id,
       deviceId: device.id,

@@ -49,6 +49,9 @@ export const LoginBodySchema = UserSchema.pick({
   .extend({
     totpCode: z.string().length(6).optional(), // 2FA code
     code: z.string().length(6).optional(), // Email OTP code
+    // Xác định form đăng nhập gọi API này là của khu vực nào, để chặn sai
+    // đối tượng: Admin không được đăng nhập ở form client và ngược lại.
+    loginContext: z.enum(['client', 'admin']).optional(),
   })
   .strict()
   .superRefine(({ totpCode, code }, ctx) => {

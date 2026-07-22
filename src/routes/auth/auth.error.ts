@@ -41,6 +41,21 @@ export const EmailNotFoundException = new UnprocessableEntityException([
 export const RefreshTokenAlreadyUsedException = new UnauthorizedException('Error.RefreshTokenAlreadyUsed');
 export const UnauthorizedAccessException = new UnauthorizedException('Error.UnauthorizedAccess');
 
+// Login context related errors (chặn đăng nhập sai khu vực: admin vs client)
+export const NotAdminAccountException = new UnprocessableEntityException([
+  {
+    message: 'Error.NotAdminAccount',
+    path: 'email',
+  },
+]);
+
+export const AdminMustUseAdminLoginException = new UnprocessableEntityException([
+  {
+    message: 'Error.AdminMustUseAdminLogin',
+    path: 'email',
+  },
+]);
+
 // Google auth related errors
 export const GoogleUserInfoError = new Error('Error.FailedToGetGoogleUserInfo');
 
