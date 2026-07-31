@@ -42,8 +42,13 @@ export const CreateUserBodySchema = UserSchema.pick({
 
 export const UpdateUserBodySchema = CreateUserBodySchema;
 
+export const UpdateUserStatusBodySchema = UserSchema.pick({
+  status: true,
+}).strict();
+
 export type GetUsersResType = z.infer<typeof GetUsersResSchema>;
 export type GetUsersQueryType = z.infer<typeof GetUsersQuerySchema>;
 export type GetUserParamsType = z.infer<typeof GetUserParamsSchema>;
 export type CreateUserBodyType = z.infer<typeof CreateUserBodySchema>;
 export type UpdateUserBodyType = z.infer<typeof UpdateUserBodySchema>;
+export type UpdateUserStatusBodyType = z.infer<typeof UpdateUserStatusBodySchema>;

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { parse } from 'date-fns';
 import { WebhookPaymentBodyType } from 'src/routes/payment/payment.model';
 // import { PaymentProducer } from 'src/routes/payment/payment.producer';
@@ -7,22 +7,25 @@ import { PREFIX_PAYMENT_CODE } from 'src/shared/constants/other.constant';
 import { PaymentStatus } from 'src/shared/constants/payment.constant';
 import { SerializeAll } from 'src/shared/constants/serialize.decorator';
 import { MessageResType } from 'src/shared/models/response.model';
-import { OrderIncludeProductSKUSnapshotType } from 'src/shared/models/shared-order.model';
+import { OrderIncludeOrderItemType } from 'src/shared/models/shared-order.model';
+import { EmailService } from 'src/shared/services/email.service';
 import { PrismaService } from 'src/shared/services/prisma.service';
 
 @Injectable()
 @SerializeAll(['getTotalPrice'])
 export class PaymentRepo {
+  private readonly logger = new Logger(PaymentRepo.name);
+
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly emailService: EmailService,
     // private readonly paymentProducer: PaymentProducer,
   ) {}
 
-  private getTotalPrice(orders: OrderIncludeProductSKUSnapshotType[]): number {
+  private getTotalPrice(orders: OrderIncludeOrderItemType[]): number {
     return orders.reduce((total, order) => {
-      console.log('order-items: ', order.items);
-      const orderTotal = order.items.reduce((totalPrice, productSku) => {
-        return totalPrice + productSku.skuPrice * productSku.quantity;
+      const orderTotal = order.items.reduce((totalPrice, item) => {
+        return totalPrice + item.price * item.quantity;
       }, 0);
       return total + orderTotal;
     }, 0);
@@ -46,7 +49,7 @@ export class PaymentRepo {
     if (paymentTransaction) {
       throw new BadRequestException('Transaction already exists');
     }
-    const userId = await this.prismaService.$transaction(async (tx) => {
+    const { userId, purchaseEmail } = await this.prismaService.$transaction(async (tx) => {
       await tx.paymentTransaction.create({
         data: {
           id: body.id,
@@ -79,29 +82,32 @@ export class PaymentRepo {
         include: {
           orders: {
             include: {
-              items: true,
+              items: {
+                include: {
+                  product: {
+                    select: { driveUrl: true },
+                  },
+                },
+              },
             },
           },
         },
       });
 
-      console.log('payment: ', payment);
       if (!payment) {
         throw new BadRequestException(`Cannot find payment with id ${paymentId}`);
       }
       const userId = payment.orders[0].userId;
       const { orders } = payment;
 
-      console.log('orders: ', orders);
       const totalPrice = this.getTotalPrice(orders as any);
 
-      console.log('totalPrice: ', totalPrice);
       if (totalPrice !== body.transferAmount) {
         throw new BadRequestException(`Price not match, expected ${totalPrice} but got ${body.transferAmount}`);
       }
 
       // 3. Cập nhật trạng thái đơn hàng
-      await Promise.all([
+      const [, , user] = await Promise.all([
         tx.payment.update({
           where: {
             id: paymentId,
@@ -120,9 +126,48 @@ export class PaymentRepo {
             status: OrderStatus.PENDING_PICKUP,
           },
         }),
+        tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { email: true },
+        }),
         // this.paymentProducer.removeJob(paymentId),
       ]);
-      return userId;
+
+      // 4. Cấp quyền sở hữu sản phẩm cho người mua sau khi thanh toán thành công
+      const purchasedProductIds = new Set(
+        orders.flatMap((order) => order.items.map((item) => item.productId)).filter((id): id is number => id !== null),
+      );
+      await Promise.all(
+        Array.from(purchasedProductIds).map((productId) =>
+          tx.userOwnership.upsert({
+            where: {
+              userId_productId: {
+                userId,
+                productId,
+              },
+            },
+            update: {},
+            create: {
+              userId,
+              productId,
+            },
+          }),
+        ),
+      );
+
+      const purchaseEmail = {
+        email: user.email,
+        items: orders.flatMap((order) =>
+          order.items.map((item) => ({ productName: item.productName, driveUrl: item.product?.driveUrl ?? null })),
+        ),
+      };
+
+      return { userId, purchaseEmail };
+    });
+
+    // Gửi email sau khi transaction commit thành công - không chặn/làm fail luồng xác nhận thanh toán nếu gửi email lỗi
+    this.emailService.sendPurchaseSuccess(purchaseEmail).catch((error) => {
+      this.logger.error(`Failed to send purchase success email to ${purchaseEmail.email}`, error);
     });
 
     return userId;

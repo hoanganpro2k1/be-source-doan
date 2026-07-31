@@ -1,33 +1,11 @@
 import { PaginationQuerySchema } from 'src/shared/models/request.model';
-import { OrderSchema, OrderStatusSchema } from 'src/shared/models/shared-order.model';
+import { OrderItemSchema, OrderSchema, OrderStatusSchema } from 'src/shared/models/shared-order.model';
 import { z } from 'zod';
-
-export const ProductSKUSnapshotSchema = z.object({
-  id: z.number(),
-  productId: z.number().nullable(),
-  productName: z.string(),
-  productTranslations: z.array(
-    z.object({
-      id: z.number(),
-      name: z.string(),
-      description: z.string(),
-      languageId: z.string(),
-    }),
-  ),
-  skuPrice: z.number(),
-  image: z.string(),
-  skuValue: z.string(),
-  skuId: z.number().nullable(),
-  orderId: z.number().nullable(),
-  quantity: z.number(),
-
-  createdAt: z.iso.datetime(),
-});
 
 export const GetOrderListResSchema = z.object({
   data: z.array(
     OrderSchema.extend({
-      items: z.array(ProductSKUSnapshotSchema),
+      items: z.array(OrderItemSchema),
     }).omit({
       receiver: true,
       deletedAt: true,
@@ -47,7 +25,7 @@ export const GetOrderListQuerySchema = PaginationQuerySchema.extend({
 });
 
 export const GetOrderDetailResSchema = OrderSchema.extend({
-  items: z.array(ProductSKUSnapshotSchema),
+  items: z.array(OrderItemSchema),
 });
 
 export const CreateOrderBodySchema = z
@@ -74,6 +52,33 @@ export const GetOrderParamsSchema = z
   })
   .strict();
 
+/**
+ * Dành cho Admin - list toàn bộ đơn hàng không giới hạn theo userId
+ */
+export const GetManageOrdersQuerySchema = PaginationQuerySchema.extend({
+  status: OrderStatusSchema.optional(),
+  userId: z.coerce.number().int().positive().optional(),
+  shopId: z.coerce.number().int().positive().optional(),
+});
+
+export const GetManageOrdersResSchema = z.object({
+  data: z.array(
+    OrderSchema.extend({
+      items: z.array(OrderItemSchema),
+    }),
+  ),
+  totalItems: z.number(),
+  page: z.number(),
+  limit: z.number(),
+  totalPages: z.number(),
+});
+
+export const UpdateOrderStatusBodySchema = z
+  .object({
+    status: OrderStatusSchema,
+  })
+  .strict();
+
 export type GetOrderListResType = z.infer<typeof GetOrderListResSchema>;
 export type GetOrderListQueryType = z.infer<typeof GetOrderListQuerySchema>;
 export type GetOrderDetailResType = z.infer<typeof GetOrderDetailResSchema>;
@@ -81,3 +86,6 @@ export type GetOrderParamsType = z.infer<typeof GetOrderParamsSchema>;
 export type CreateOrderBodyType = z.infer<typeof CreateOrderBodySchema>;
 export type CreateOrderResType = z.infer<typeof CreateOrderResSchema>;
 export type CancelOrderResType = z.infer<typeof CancelOrderResSchema>;
+export type GetManageOrdersQueryType = z.infer<typeof GetManageOrdersQuerySchema>;
+export type GetManageOrdersResType = z.infer<typeof GetManageOrdersResSchema>;
+export type UpdateOrderStatusBodyType = z.infer<typeof UpdateOrderStatusBodySchema>;

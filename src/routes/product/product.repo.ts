@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from 'src/generated/prisma/client';
 import {
   CreateProductBodyType,
-  GetProductDetailResType,
+  GetManageProductDetailResType,
   GetProductsResType,
   UpdateProductBodyType,
 } from 'src/routes/product/product.model';
@@ -20,7 +20,6 @@ export class ProductRepo {
     limit,
     page,
     name,
-    brandIds,
     categories,
     minPrice,
     maxPrice,
@@ -33,7 +32,6 @@ export class ProductRepo {
     limit: number;
     page: number;
     name?: string;
-    brandIds?: number[];
     categories?: number[];
     minPrice?: number;
     maxPrice?: number;
@@ -64,11 +62,6 @@ export class ProductRepo {
       where.name = {
         contains: name,
         mode: 'insensitive',
-      };
-    }
-    if (brandIds && brandIds.length > 0) {
-      where.brandId = {
-        in: brandIds,
       };
     }
     if (categories && categories.length > 0) {
@@ -141,7 +134,7 @@ export class ProductRepo {
     }) as any;
   }
 
-  getDetail({
+  async getDetail({
     productId,
     languageId,
     isPublic,
@@ -149,7 +142,7 @@ export class ProductRepo {
     productId: number;
     languageId: string;
     isPublic?: boolean;
-  }): Promise<GetProductDetailResType | null> {
+  }): Promise<GetManageProductDetailResType | null> {
     let where: Prisma.ProductWhereUniqueInput = {
       id: productId,
       deletedAt: null,
@@ -165,75 +158,72 @@ export class ProductRepo {
         OR: [{ publishedAt: null }, { publishedAt: { gt: new Date() } }],
       };
     }
-    return this.prismaService.product.findUnique({
-      where,
-      include: {
-        productTranslations: {
-          where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
-        },
-        skus: {
-          where: {
-            deletedAt: null,
+    const [product, ratingAgg, downloadAgg] = await Promise.all([
+      this.prismaService.product.findUnique({
+        where,
+        include: {
+          productTranslations: {
+            where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
           },
-        },
-        brand: {
-          include: {
-            brandTranslations: {
-              where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
+          categories: {
+            where: {
+              deletedAt: null,
+            },
+            include: {
+              categoryTranslations: {
+                where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
+              },
             },
           },
         },
-        categories: {
-          where: {
-            deletedAt: null,
-          },
-          include: {
-            categoryTranslations: {
-              where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
-            },
-          },
-        },
-      },
-    }) as any;
+      }),
+      this.prismaService.review.aggregate({
+        where: { productId },
+        _avg: { rating: true },
+        _count: true,
+      }),
+      this.prismaService.userOwnership.aggregate({
+        where: { productId },
+        _sum: { downloadCount: true },
+      }),
+    ]);
+    if (!product) {
+      return null;
+    }
+    // Tăng lượt xem cho luồng public/client, không tính lượt xem của chủ shop/admin xem đơn quản lý
+    if (isPublic === true) {
+      void this.prismaService.product.update({
+        where: { id: productId },
+        data: { viewCount: { increment: 1 } },
+      });
+    }
+    return {
+      ...product,
+      avgRating: ratingAgg._avg.rating ?? 0,
+      reviewCount: ratingAgg._count,
+      downloadCount: downloadAgg._sum.downloadCount ?? 0,
+    } as any;
   }
 
-  create({
+  async create({
     createdById,
     data,
   }: {
     createdById: number;
     data: CreateProductBodyType;
-  }): Promise<GetProductDetailResType> {
-    const { skus, categories, ...productData } = data;
-    return this.prismaService.product.create({
+  }): Promise<GetManageProductDetailResType> {
+    const { categories, ...productData } = data;
+    const product = await this.prismaService.product.create({
       data: {
         createdById,
         ...productData,
         categories: {
           connect: categories.map((category) => ({ id: category })),
         },
-        skus: {
-          createMany: {
-            data: skus.map((sku) => ({
-              ...sku,
-              createdById,
-            })),
-          },
-        },
       },
       include: {
         productTranslations: {
           where: { deletedAt: null },
-        },
-        skus: {
-          where: { deletedAt: null },
-        },
-        brand: {
-          include: {
-            brandTranslations: {
-              where: { deletedAt: null },
-            },
-          },
         },
         categories: {
           where: {
@@ -246,7 +236,8 @@ export class ProductRepo {
           },
         },
       },
-    }) as any;
+    });
+    return { ...product, avgRating: 0, reviewCount: 0, downloadCount: 0 } as any;
   }
 
   async update({
@@ -257,49 +248,9 @@ export class ProductRepo {
     id: number;
     updatedById: number;
     data: UpdateProductBodyType;
-  }): Promise<ProductType> {
-    const { skus: dataSkus, categories, ...productData } = data;
-    // SKU đã tồn tại trong DB nhưng không có trong data payload thì sẽ bị xóa
-    // SKU đã tồn tại trong DB nhưng có trong data payload thì sẽ được cập nhật
-    // SKY không tồn tại trong DB nhưng có trong data payload thì sẽ được thêm mới
-
-    // 1. Lấy danh sách SKU hiện tại trong DB
-    const existingSKUs = await this.prismaService.sKU.findMany({
-      where: {
-        productId: id,
-        deletedAt: null,
-      },
-    });
-
-    // 2. Tìm các SKUs cần xóa (tồn tại trong DB nhưng không có trong data payload)
-    const skusToDelete = existingSKUs.filter((sku) => dataSkus.every((dataSku) => dataSku.value !== sku.value));
-    const skuIdsToDelete = skusToDelete.map((sku) => sku.id);
-
-    // 3. Mapping ID vào trong data payload
-    const skusWithId = dataSkus.map((dataSku) => {
-      const existingSku = existingSKUs.find((existingSKU) => existingSKU.value === dataSku.value);
-      return {
-        ...dataSku,
-        id: existingSku ? existingSku.id : null,
-      };
-    });
-
-    // 4. Tìm các skus để cập nhật
-    const skusToUpdate = skusWithId.filter((sku) => sku.id !== null);
-
-    // 5. Tìm các skus để thêm mới
-    const skusToCreate = skusWithId
-      .filter((sku) => sku.id === null)
-      .map((sku) => {
-        const { id: skuId, ...data } = sku;
-        return {
-          ...data,
-          productId: id,
-          createdById: updatedById,
-        };
-      });
-    const [product] = await this.prismaService.$transaction([
-      // Cập nhật Product
+  }): Promise<GetManageProductDetailResType> {
+    const { categories, ...productData } = data;
+    const [product, ratingAgg, downloadAgg] = await Promise.all([
       this.prismaService.product.update({
         where: {
           id,
@@ -312,41 +263,38 @@ export class ProductRepo {
             connect: categories.map((category) => ({ id: category })),
           },
         },
-      }),
-      // Xóa mềm các SKU không có trong data payload
-      this.prismaService.sKU.updateMany({
-        where: {
-          id: {
-            in: skuIdsToDelete,
+        include: {
+          productTranslations: {
+            where: { deletedAt: null },
+          },
+          categories: {
+            where: {
+              deletedAt: null,
+            },
+            include: {
+              categoryTranslations: {
+                where: { deletedAt: null },
+              },
+            },
           },
         },
-        data: {
-          deletedAt: new Date(),
-          deletedById: updatedById,
-        },
       }),
-      // Cập nhật các SKU có trong data payload
-      ...skusToUpdate.map((sku) =>
-        this.prismaService.sKU.update({
-          where: {
-            id: sku.id as number,
-          },
-          data: {
-            value: sku.value,
-            price: sku.price,
-            stock: sku.stock,
-            image: sku.image,
-            updatedById,
-          },
-        }),
-      ),
-      // Thêm mới các SKU không có trong DB
-      this.prismaService.sKU.createMany({
-        data: skusToCreate,
+      this.prismaService.review.aggregate({
+        where: { productId: id },
+        _avg: { rating: true },
+        _count: true,
+      }),
+      this.prismaService.userOwnership.aggregate({
+        where: { productId: id },
+        _sum: { downloadCount: true },
       }),
     ]);
-
-    return product as any;
+    return {
+      ...product,
+      avgRating: ratingAgg._avg.rating ?? 0,
+      reviewCount: ratingAgg._count,
+      downloadCount: downloadAgg._sum.downloadCount ?? 0,
+    } as any;
   }
 
   async delete(
@@ -379,16 +327,6 @@ export class ProductRepo {
         },
       }),
       this.prismaService.productTranslation.updateMany({
-        where: {
-          productId: id,
-          deletedAt: null,
-        },
-        data: {
-          deletedAt: now,
-          deletedById,
-        },
-      }),
-      this.prismaService.sKU.updateMany({
         where: {
           productId: id,
           deletedAt: null,

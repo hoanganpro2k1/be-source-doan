@@ -37,6 +37,7 @@ const configSchema = z.object({
   S3_SECRET_KEY: z.string(),
   REDIS_URL: z.string(),
   PAYMENT_API_KEY: z.string(),
+  BLOG_API_KEY: z.string(),
 });
 
 const configServer = configSchema.safeParse(process.env);

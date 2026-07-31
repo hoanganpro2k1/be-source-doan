@@ -30,7 +30,7 @@ export const OrderSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 
-export const ProductSKUSnapshotSchema = z.object({
+export const OrderItemSchema = z.object({
   id: z.number(),
   productId: z.number().nullable(),
   productName: z.string(),
@@ -42,19 +42,17 @@ export const ProductSKUSnapshotSchema = z.object({
       languageId: z.string(),
     }),
   ),
-  skuPrice: z.number(),
+  price: z.number(),
   image: z.string(),
-  skuValue: z.string(),
-  skuId: z.number().nullable(),
   orderId: z.number().nullable(),
   quantity: z.number(),
 
   createdAt: z.iso.datetime(),
 });
 
-export const OrderIncludeProductSKUSnapshotSchema = OrderSchema.extend({
-  items: z.array(ProductSKUSnapshotSchema),
+export const OrderIncludeOrderItemSchema = OrderSchema.extend({
+  items: z.array(OrderItemSchema),
 });
 
 export type OrderType = z.infer<typeof OrderSchema>;
-export type OrderIncludeProductSKUSnapshotType = z.infer<typeof OrderIncludeProductSKUSnapshotSchema>;
+export type OrderIncludeOrderItemType = z.infer<typeof OrderIncludeOrderItemSchema>;

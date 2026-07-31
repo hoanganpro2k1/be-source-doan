@@ -3,11 +3,10 @@ import { ZodResponse } from 'nestjs-zod';
 import { ManageProductService } from 'src/routes/product/manage-product.service';
 import {
   CreateProductBodyDTO,
+  GetManageProductDetailResDTO,
   GetManageProductsQueryDTO,
-  GetProductDetailResDTO,
   GetProductParamsDTO,
   GetProductsResDTO,
-  ProductDTO,
   UpdateProductBodyDTO,
 } from 'src/routes/product/product.dto';
 import { ActiveUser } from 'src/shared/decorators/active-user.decorator';
@@ -29,7 +28,7 @@ export class ManageProductController {
   }
 
   @Get(':productId')
-  @ZodResponse({ type: GetProductDetailResDTO })
+  @ZodResponse({ type: GetManageProductDetailResDTO })
   findById(@Param() params: GetProductParamsDTO, @ActiveUser() user: AccessTokenPayload) {
     return this.manageProductService.getDetail({
       productId: params.productId,
@@ -39,7 +38,7 @@ export class ManageProductController {
   }
 
   @Post()
-  @ZodResponse({ type: GetProductDetailResDTO })
+  @ZodResponse({ type: GetManageProductDetailResDTO })
   create(@Body() body: CreateProductBodyDTO, @ActiveUser('userId') userId: number) {
     return this.manageProductService.create({
       data: body,
@@ -48,7 +47,7 @@ export class ManageProductController {
   }
 
   @Put(':productId')
-  @ZodResponse({ type: ProductDTO })
+  @ZodResponse({ type: GetManageProductDetailResDTO })
   update(
     @Body() body: UpdateProductBodyDTO,
     @Param() params: GetProductParamsDTO,

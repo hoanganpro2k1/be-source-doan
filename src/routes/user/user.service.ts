@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { UserRepo } from 'src/routes/user/user.repo';
-import { CreateUserBodyType, GetUsersQueryType, UpdateUserBodyType } from 'src/routes/user/user.model';
+import { CreateUserBodyType, GetUsersQueryType, UpdateUserBodyType, UpdateUserStatusBodyType } from 'src/routes/user/user.model';
 import { NotFoundRecordException } from 'src/shared/error';
 import {
   isForeignKeyConstraintPrismaError,
@@ -140,6 +140,46 @@ export class UserService {
       }
       if (isForeignKeyConstraintPrismaError(error)) {
         throw RoleNotFoundException;
+      }
+      throw error;
+    }
+  }
+
+  async updateStatus({
+    id,
+    data,
+    updatedById,
+    updatedByRoleName,
+  }: {
+    id: number;
+    data: UpdateUserStatusBodyType;
+    updatedById: number;
+    updatedByRoleName: string;
+  }) {
+    try {
+      // Không thể khoá/mở khoá chính mình
+      this.verifyYourself({
+        userAgentId: updatedById,
+        userTargetId: id,
+      });
+
+      const roleIdTarget = await this.getRoleIdByUserId(id);
+      await this.verifyRole({
+        roleNameAgent: updatedByRoleName,
+        roleIdTarget,
+      });
+
+      const updatedUser = await this.sharedUserRepository.update(
+        { id },
+        {
+          ...data,
+          updatedById,
+        },
+      );
+      return updatedUser;
+    } catch (error) {
+      if (isNotFoundPrismaError(error)) {
+        throw NotFoundRecordException;
       }
       throw error;
     }

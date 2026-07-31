@@ -5,6 +5,7 @@ import {
   GetUsersQuerySchema,
   GetUsersResSchema,
   UpdateUserBodySchema,
+  UpdateUserStatusBodySchema,
 } from 'src/routes/user/user.model';
 import { UpdateProfileResDTO } from 'src/shared/dtos/shared-user.dto';
 
@@ -17,5 +18,7 @@ export class GetUserParamsDTO extends createZodDto(GetUserParamsSchema) {}
 export class CreateUserBodyDTO extends createZodDto(CreateUserBodySchema) {}
 
 export class UpdateUserBodyDTO extends createZodDto(UpdateUserBodySchema) {}
+
+export class UpdateUserStatusBodyDTO extends createZodDto(UpdateUserStatusBodySchema) {}
 
 export class CreateUserResDTO extends UpdateProfileResDTO {}

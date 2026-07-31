@@ -14,8 +14,6 @@ import { RoleModule } from 'src/routes/role/role.module';
 import { ProfileModule } from 'src/routes/profile/profile.module';
 import { UserModule } from 'src/routes/user/user.module';
 import { MediaModule } from 'src/routes/media/media.module';
-import { BrandModule } from 'src/routes/brand/brand.module';
-import { BrandTranslationModule } from 'src/routes/brand/brand-translation/brand-translation.module';
 import { CategoryModule } from 'src/routes/category/category.module';
 import { CategoryTranslationModule } from 'src/routes/category/category-translation/category-translation.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
@@ -24,7 +22,11 @@ import { ProductModule } from 'src/routes/product/product.module';
 import { ProductTranslationModule } from 'src/routes/product/product-translation/product-translation.module';
 import { CartModule } from 'src/routes/cart/cart.module';
 import { OrderModule } from 'src/routes/order/order.module';
+import { OwnershipModule } from 'src/routes/ownership/ownership.module';
 import { PaymentModule } from 'src/routes/payment/payment.module';
+import { BlogModule } from 'src/routes/blog/blog.module';
+import { TransactionModule } from 'src/routes/transaction/transaction.module';
+import { ReviewModule } from 'src/routes/review/review.module';
 
 @Module({
   imports: [
@@ -45,16 +47,17 @@ import { PaymentModule } from 'src/routes/payment/payment.module';
     ProfileModule,
     UserModule,
     MediaModule,
-    BrandModule,
-    BrandTranslationModule,
     CategoryModule,
     CategoryTranslationModule,
     ProductModule,
     ProductTranslationModule,
     CartModule,
     OrderModule,
+    OwnershipModule,
     PaymentModule,
-    // ReviewModule,
+    BlogModule,
+    TransactionModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [

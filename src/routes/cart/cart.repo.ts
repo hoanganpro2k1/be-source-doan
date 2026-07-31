@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from 'src/generated/prisma/client';
 import {
-  InvalidQuantityException,
   NotFoundCartItemException,
-  NotFoundSKUException,
-  OutOfStockSKUException,
   ProductNotFoundException,
 } from 'src/routes/cart/cart.error';
 import {
@@ -18,7 +15,7 @@ import {
 import { ALL_LANGUAGE_CODE } from 'src/shared/constants/other.constant';
 import { SerializeAll } from 'src/shared/constants/serialize.decorator';
 import { isNotFoundPrismaError } from 'src/shared/helpers';
-import { SKUSchemaType } from 'src/shared/models/shared-sku.model';
+import { ProductType } from 'src/shared/models/shared-product.model';
 import { PrismaService } from 'src/shared/services/prisma.service';
 
 @Injectable()
@@ -26,46 +23,14 @@ import { PrismaService } from 'src/shared/services/prisma.service';
 export class CartRepo {
   constructor(private readonly prismaService: PrismaService) {}
 
-  private async validateSKU({
-    skuId,
-    quantity,
-    userId,
-    isCreate,
-  }: {
-    skuId: number;
-    quantity: number;
-    userId: number;
-    isCreate: boolean;
-  }): Promise<SKUSchemaType> {
-    const [cartItem, sku] = await Promise.all([
-      this.prismaService.cartItem.findUnique({
-        where: {
-          userId_skuId: {
-            userId,
-            skuId,
-          },
-        },
-      }),
-      this.prismaService.sKU.findUnique({
-        where: { id: skuId, deletedAt: null },
-        include: {
-          product: true,
-        },
-      }),
-    ]);
-    // Kiểm tra tồn tại của SKU
-    if (!sku) {
-      throw NotFoundSKUException;
+  private async validateProduct(productId: number): Promise<ProductType> {
+    const product = await this.prismaService.product.findUnique({
+      where: { id: productId, deletedAt: null },
+    });
+    // Kiểm tra tồn tại của sản phẩm
+    if (!product) {
+      throw ProductNotFoundException;
     }
-    if (cartItem && isCreate && quantity + cartItem.quantity > sku.stock) {
-      throw InvalidQuantityException;
-    }
-    // Kiểm tra lượng hàng còn lại
-    if (sku.stock < 1 || sku.stock < quantity) {
-      throw OutOfStockSKUException;
-    }
-    const { product } = sku;
-
     // Kiểm tra sản phẩm đã bị xóa hoặc có công khai hay không
     if (
       product.deletedAt !== null ||
@@ -74,7 +39,7 @@ export class CartRepo {
     ) {
       throw ProductNotFoundException;
     }
-    return sku as any;
+    return product as any;
   }
 
   async list({
@@ -91,27 +56,21 @@ export class CartRepo {
     const cartItems = await this.prismaService.cartItem.findMany({
       where: {
         userId,
-        sku: {
-          product: {
-            deletedAt: null,
-            publishedAt: {
-              lte: new Date(),
-              not: null,
-            },
+        product: {
+          deletedAt: null,
+          publishedAt: {
+            lte: new Date(),
+            not: null,
           },
         },
       },
       include: {
-        sku: {
+        product: {
           include: {
-            product: {
-              include: {
-                productTranslations: {
-                  where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
-                },
-                createdBy: true,
-              },
+            productTranslations: {
+              where: languageId === ALL_LANGUAGE_CODE ? { deletedAt: null } : { languageId, deletedAt: null },
             },
+            createdBy: true,
           },
         },
       },
@@ -121,10 +80,10 @@ export class CartRepo {
     });
     const groupMap = new Map<number, CartItemDetailType>();
     for (const cartItem of cartItems) {
-      const shopId = cartItem.sku.product.createdById;
+      const shopId = cartItem.product.createdById;
       if (shopId) {
         if (!groupMap.has(shopId)) {
-          groupMap.set(shopId, { shop: cartItem.sku.product.createdBy, cartItems: [] });
+          groupMap.set(shopId, { shop: cartItem.product.createdBy, cartItems: [] });
         }
         groupMap.get(shopId)?.cartItems.push(cartItem as any);
       }
@@ -161,8 +120,7 @@ export class CartRepo {
       SELECT
         "Product"."createdById"
       FROM "CartItem"
-      JOIN "SKU" ON "CartItem"."skuId" = "SKU"."id"
-      JOIN "Product" ON "SKU"."productId" = "Product"."id"
+      JOIN "Product" ON "CartItem"."productId" = "Product"."id"
       WHERE "CartItem"."userId" = ${userId}
         AND "Product"."deletedAt" IS NULL
         AND "Product"."publishedAt" IS NOT NULL
@@ -176,42 +134,38 @@ export class CartRepo {
          jsonb_build_object(
            'id', "CartItem"."id",
            'quantity', "CartItem"."quantity",
-           'skuId', "CartItem"."skuId",
+           'productId', "CartItem"."productId",
            'userId', "CartItem"."userId",
            'createdAt', to_char("CartItem"."createdAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
            'updatedAt', to_char("CartItem"."updatedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-           'sku', jsonb_build_object(
-             'id', "SKU"."id",
-              'value', "SKU"."value",
-              'price', "SKU"."price",
-              'stock', "SKU"."stock",
-              'image', "SKU"."image",
-              'productId', "SKU"."productId",
-              'product', jsonb_build_object(
-                'id', "Product"."id",
-                'publishedAt', to_char("Product"."publishedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-                'name', "Product"."name",
-                'basePrice', "Product"."basePrice",
-                'virtualPrice', "Product"."virtualPrice",
-                'brandId', "Product"."brandId",
-                'images', "Product"."images",
-                'variants', "Product"."variants",
-                'productTranslations', COALESCE((
-                  SELECT json_agg(
-                    jsonb_build_object(
-                      'id', pt."id",
-                      'productId', pt."productId",
-                      'languageId', pt."languageId",
-                      'name', pt."name",
-                      'description', pt."description"
-                    )
-                  ) FILTER (WHERE pt."id" IS NOT NULL)
-                  FROM "ProductTranslation" pt
-                  WHERE pt."productId" = "Product"."id"
-                    AND pt."deletedAt" IS NULL
-                    ${languageId === ALL_LANGUAGE_CODE ? Prisma.sql`` : Prisma.sql`AND pt."languageId" = ${languageId}`}
-                ), '[]'::json)
-              )
+           'product', jsonb_build_object(
+              'id', "Product"."id",
+              'publishedAt', to_char("Product"."publishedAt" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+              'name', "Product"."name",
+              'basePrice', "Product"."basePrice",
+              'virtualPrice', "Product"."virtualPrice",
+              'images', "Product"."images",
+              'demoUrl', "Product"."demoUrl",
+              'githubUrl', "Product"."githubUrl",
+              'documentation', "Product"."documentation",
+              'version', "Product"."version",
+              'techStack', "Product"."techStack",
+              'viewCount', "Product"."viewCount",
+              'productTranslations', COALESCE((
+                SELECT json_agg(
+                  jsonb_build_object(
+                    'id', pt."id",
+                    'productId', pt."productId",
+                    'languageId', pt."languageId",
+                    'name', pt."name",
+                    'description', pt."description"
+                  )
+                ) FILTER (WHERE pt."id" IS NOT NULL)
+                FROM "ProductTranslation" pt
+                WHERE pt."productId" = "Product"."id"
+                  AND pt."deletedAt" IS NULL
+                  ${languageId === ALL_LANGUAGE_CODE ? Prisma.sql`` : Prisma.sql`AND pt."languageId" = ${languageId}`}
+              ), '[]'::json)
            )
          ) ORDER BY "CartItem"."updatedAt" DESC
        ) AS "cartItems",
@@ -221,8 +175,7 @@ export class CartRepo {
          'avatar', "User"."avatar"
        ) AS "shop"
      FROM "CartItem"
-     JOIN "SKU" ON "CartItem"."skuId" = "SKU"."id"
-     JOIN "Product" ON "SKU"."productId" = "Product"."id"
+     JOIN "Product" ON "CartItem"."productId" = "Product"."id"
      LEFT JOIN "ProductTranslation" ON "Product"."id" = "ProductTranslation"."productId"
        AND "ProductTranslation"."deletedAt" IS NULL
        ${languageId === ALL_LANGUAGE_CODE ? Prisma.sql`` : Prisma.sql`AND "ProductTranslation"."languageId" = ${languageId}`}
@@ -233,7 +186,7 @@ export class CartRepo {
         AND "Product"."publishedAt" <= NOW()
      GROUP BY "Product"."createdById", "User"."id"
      ORDER BY MAX("CartItem"."updatedAt") DESC
-      LIMIT ${take} 
+      LIMIT ${take}
       OFFSET ${skip}
    `;
     const [data, totalItems] = await Promise.all([data$, totalItems$]);
@@ -247,18 +200,13 @@ export class CartRepo {
   }
 
   async create(userId: number, body: AddToCartBodyType): Promise<CartItemType> {
-    await this.validateSKU({
-      skuId: body.skuId,
-      quantity: body.quantity,
-      userId,
-      isCreate: true,
-    });
+    await this.validateProduct(body.productId);
 
     return this.prismaService.cartItem.upsert({
       where: {
-        userId_skuId: {
+        userId_productId: {
           userId,
-          skuId: body.skuId,
+          productId: body.productId,
         },
       },
       update: {
@@ -268,7 +216,7 @@ export class CartRepo {
       },
       create: {
         userId,
-        skuId: body.skuId,
+        productId: body.productId,
         quantity: body.quantity,
       },
     }) as any;
@@ -283,12 +231,7 @@ export class CartRepo {
     cartItemId: number;
     body: UpdateCartItemBodyType;
   }): Promise<CartItemType> {
-    await this.validateSKU({
-      skuId: body.skuId,
-      quantity: body.quantity,
-      userId,
-      isCreate: false,
-    });
+    await this.validateProduct(body.productId);
 
     return this.prismaService.cartItem
       .update({
@@ -297,7 +240,7 @@ export class CartRepo {
           userId,
         },
         data: {
-          skuId: body.skuId,
+          productId: body.productId,
           quantity: body.quantity,
         },
       })

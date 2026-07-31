@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { ZodResponse } from 'nestjs-zod';
 import {
@@ -8,6 +8,7 @@ import {
   GetUsersQueryDTO,
   GetUsersResDTO,
   UpdateUserBodyDTO,
+  UpdateUserStatusBodyDTO,
 } from 'src/routes/user/user.dto';
 import { UserService } from 'src/routes/user/user.service';
 import { ActiveRolePermissions } from 'src/shared/decorators/active-role-permissions.decorator';
@@ -58,6 +59,22 @@ export class UserController {
     @ActiveRolePermissions('name') roleName: string,
   ) {
     return this.userService.update({
+      data: body,
+      id: params.userId,
+      updatedById: userId,
+      updatedByRoleName: roleName,
+    });
+  }
+
+  @Patch(':userId/status')
+  @ZodResponse({ type: UpdateProfileResDTO })
+  updateStatus(
+    @Body() body: UpdateUserStatusBodyDTO,
+    @Param() params: GetUserParamsDTO,
+    @ActiveUser('userId') userId: number,
+    @ActiveRolePermissions('name') roleName: string,
+  ) {
+    return this.userService.updateStatus({
       data: body,
       id: params.userId,
       updatedById: userId,

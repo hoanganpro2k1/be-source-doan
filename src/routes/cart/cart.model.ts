@@ -1,13 +1,12 @@
 import { ProductTranslationSchema } from 'src/shared/models/shared-product-translation.model';
 import { ProductSchema } from 'src/shared/models/shared-product.model';
-import { SKUSchema } from 'src/shared/models/shared-sku.model';
 import { UserSchema } from 'src/shared/models/shared-user.model';
 import { z } from 'zod';
 
 export const CartItemSchema = z.object({
   id: z.number(),
   quantity: z.number().int().positive(),
-  skuId: z.number(),
+  productId: z.number(),
   userId: z.number(),
 
   createdAt: z.iso.datetime(),
@@ -26,26 +25,17 @@ export const CartItemDetailSchema = z.object({
   }),
   cartItems: z.array(
     CartItemSchema.extend({
-      sku: SKUSchema.extend({
-        product: ProductSchema.extend({
-          productTranslations: z.array(
-            ProductTranslationSchema.omit({
-              createdById: true,
-              updatedById: true,
-              deletedById: true,
-              deletedAt: true,
-              createdAt: true,
-              updatedAt: true,
-            }),
-          ),
-        }).omit({
-          createdById: true,
-          updatedById: true,
-          deletedById: true,
-          deletedAt: true,
-          createdAt: true,
-          updatedAt: true,
-        }),
+      product: ProductSchema.extend({
+        productTranslations: z.array(
+          ProductTranslationSchema.omit({
+            createdById: true,
+            updatedById: true,
+            deletedById: true,
+            deletedAt: true,
+            createdAt: true,
+            updatedAt: true,
+          }),
+        ),
       }).omit({
         createdById: true,
         updatedById: true,
@@ -67,7 +57,7 @@ export const GetCartResSchema = z.object({
 });
 
 export const AddToCartBodySchema = CartItemSchema.pick({
-  skuId: true,
+  productId: true,
   quantity: true,
 }).strict();
 

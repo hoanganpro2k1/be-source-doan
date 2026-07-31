@@ -21,7 +21,6 @@ model Language {
   deletedAt            DateTime?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
-  brandTranslations    BrandTranslation[]
   categoryTranslations CategoryTranslation[]
   createdBy            User?                 @relation("LanguageCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
   deletedBy            User?                 @relation("LanguageDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
@@ -48,12 +47,6 @@ model User {
   deletedAt                   DateTime?
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
-  createdBrands               Brand[]               @relation("BrandCreatedBy")
-  deletedBrands               Brand[]               @relation("BrandDeletedBy")
-  updatedBrands               Brand[]               @relation("BrandUpdatedBy")
-  createdBrandTranslations    BrandTranslation[]    @relation("BrandTranslationCreatedBy")
-  deletedBrandTranslations    BrandTranslation[]    @relation("BrandTranslationDeletedBy")
-  updatedBrandTranslations    BrandTranslation[]    @relation("BrandTranslationUpdatedBy")
   carts                       CartItem[]
   createdCategories           Category[]            @relation("CategoryCreatedBy")
   deletedCategories           Category[]            @relation("CategoryDeletedBy")
@@ -61,6 +54,9 @@ model User {
   createdCategoryTranslations CategoryTranslation[] @relation("CategoryTranslationCreatedBy")
   deletedCategoryTranslations CategoryTranslation[] @relation("CategoryTranslationDeletedBy")
   updatedCategoryTranslations CategoryTranslation[] @relation("CategoryTranslationUpdatedBy")
+  createdBlogs                Blog[]                @relation("BlogCreatedBy")
+  deletedBlogs                Blog[]                @relation("BlogDeletedBy")
+  updatedBlogs                Blog[]                @relation("BlogUpdatedBy")
   devices                     Device[]
   createdLanguages            Language[]            @relation("LanguageCreatedBy")
   deletedLanguages            Language[]            @relation("LanguageDeletedBy")
@@ -86,9 +82,6 @@ model User {
   createdRoles                Role[]                @relation("RoleCreatedBy")
   deletedRoles                Role[]                @relation("RoleDeletedBy")
   updatedRoles                Role[]                @relation("RoleUpdatedBy")
-  createdSKUS                 SKU[]                 @relation("SKUCreatedBy")
-  deletedSKUS                 SKU[]                 @relation("SKUDeletedBy")
-  updatedSKUS                 SKU[]                 @relation("SKUUpdatedBy")
   createdBy                   User?                 @relation("CreatorUsers", fields: [createdById], references: [id], onUpdate: NoAction)
   createdUsers                User[]                @relation("CreatorUsers")
   deletedBy                   User?                 @relation("DeletorUsers", fields: [deletedById], references: [id], onUpdate: NoAction)
@@ -125,6 +118,31 @@ model UserTranslation {
   user        User      @relation("User", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([deletedAt])
+}
+
+model Blog {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(500)
+  slug        String    @unique @db.VarChar(500)
+  excerpt     String
+  content     String
+  coverImage  String    @db.VarChar(1000)
+  category    String    @db.VarChar(200)
+  author      String    @default("Hoàng Ân") @db.VarChar(200)
+  views       Int       @default(0)
+  publishedAt DateTime?
+  createdById Int?
+  updatedById Int?
+  deletedById Int?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   User?     @relation("BlogCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
+  deletedBy   User?     @relation("BlogDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
+  updatedBy   User?     @relation("BlogUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
+
+  @@index([deletedAt])
+  @@index([publishedAt])
 }
 
 model VerificationCode {
@@ -210,30 +228,28 @@ model Product {
   name                String               @db.VarChar(500)
   basePrice           Float
   virtualPrice        Float
-  brandId             Int
   images              String[]
-  /// [Variants]
-  variants            Json
   demoUrl             String?              @db.VarChar(1000)
   githubUrl           String?              @db.VarChar(1000)
+  driveUrl            String?              @db.VarChar(1000)
   documentation       String?
   version             String               @default("1.0.0") @db.VarChar(50)
   techStack           String[]
+  viewCount           Int                  @default(0)
   createdById         Int
   updatedById         Int?
   deletedById         Int?
   deletedAt           DateTime?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  brand               Brand                @relation(fields: [brandId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdBy           User                 @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: Cascade, onUpdate: NoAction)
   deletedBy           User?                @relation("ProductDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
   updatedBy           User?                @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
-  productSKUSnapshots ProductSKUSnapshot[]
+  orderItems          OrderItem[]
   productTranslations ProductTranslation[]
   reviews             Review[]
-  skus                SKU[]
   userOwnerships      UserOwnership[]
+  cartItems           CartItem[]
   categories          Category[]           @relation("CategoryToProduct")
   orders              Order[]              @relation("OrderToProduct")
 
@@ -305,92 +321,25 @@ model CategoryTranslation {
   @@index([deletedAt])
 }
 
-model SKU {
-  id                  Int                  @id @default(autoincrement())
-  value               String               @db.VarChar(500)
-  price               Float
-  stock               Int
-  image               String
-  productId           Int
-  createdById         Int
-  updatedById         Int?
-  deletedById         Int?
-  deletedAt           DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  cartItems           CartItem[]
-  productSKUSnapshots ProductSKUSnapshot[]
-  createdBy           User                 @relation("SKUCreatedBy", fields: [createdById], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  deletedBy           User?                @relation("SKUDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
-  product             Product              @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  updatedBy           User?                @relation("SKUUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
-  userOwnerships      UserOwnership[]
-
-  @@index([deletedAt])
-  @@index([productId])
-}
-
-model Brand {
-  id                Int                @id @default(autoincrement())
-  logo              String             @db.VarChar(1000)
-  name              String             @db.VarChar(500)
-  createdById       Int?
-  updatedById       Int?
-  deletedById       Int?
-  deletedAt         DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  createdBy         User?              @relation("BrandCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
-  deletedBy         User?              @relation("BrandDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
-  updatedBy         User?              @relation("BrandUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
-  brandTranslations BrandTranslation[]
-  products          Product[]
-
-  @@index([deletedAt])
-}
-
-model BrandTranslation {
-  id          Int       @id @default(autoincrement())
-  brandId     Int
-  languageId  String
-  name        String    @db.VarChar(500)
-  description String
-  createdById Int?
-  updatedById Int?
-  deletedById Int?
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  createdBy   User?     @relation("BrandTranslationCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
-  deletedBy   User?     @relation("BrandTranslationDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
-  language    Language  @relation(fields: [languageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  updatedBy   User?     @relation("BrandTranslationUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
-
-  @@index([deletedAt])
-}
-
 model CartItem {
   id        Int      @id @default(autoincrement())
   quantity  Int
-  skuId     Int
+  productId Int
   userId    Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  sku       SKU      @relation(fields: [skuId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([userId, skuId])
+  @@unique([userId, productId])
   @@index([userId])
 }
 
-model ProductSKUSnapshot {
+model OrderItem {
   id                  Int      @id @default(autoincrement())
   productName         String   @db.VarChar(500)
-  skuPrice            Float
+  price               Float
   image               String
-  skuValue            String   @db.VarChar(500)
-  skuId               Int?
   orderId             Int?
   quantity            Int
   productId           Int?
@@ -399,11 +348,10 @@ model ProductSKUSnapshot {
   createdAt           DateTime @default(now())
   order               Order?   @relation(fields: [orderId], references: [id], onUpdate: NoAction)
   product             Product? @relation(fields: [productId], references: [id], onUpdate: NoAction)
-  sku                 SKU?     @relation(fields: [skuId], references: [id], onUpdate: NoAction)
 }
 
 model Order {
-  id          Int                  @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   userId      Int
   status      OrderStatus
   /// [Receiver]
@@ -414,17 +362,17 @@ model Order {
   updatedById Int?
   deletedById Int?
   deletedAt   DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  createdBy   User?                @relation("OrderCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
-  deletedBy   User?                @relation("OrderDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
-  payment     Payment              @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  shop        User?                @relation("Shop", fields: [shopId], references: [id], onUpdate: NoAction)
-  updatedBy   User?                @relation("OrderUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
-  user        User                 @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  items       ProductSKUSnapshot[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   User?       @relation("OrderCreatedBy", fields: [createdById], references: [id], onUpdate: NoAction)
+  deletedBy   User?       @relation("OrderDeletedBy", fields: [deletedById], references: [id], onUpdate: NoAction)
+  payment     Payment     @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shop        User?       @relation("Shop", fields: [shopId], references: [id], onUpdate: NoAction)
+  updatedBy   User?       @relation("OrderUpdatedBy", fields: [updatedById], references: [id], onUpdate: NoAction)
+  user        User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items       OrderItem[]
   reviews     Review[]
-  products    Product[]            @relation("OrderToProduct")
+  products    Product[]   @relation("OrderToProduct")
 
   @@index([deletedAt])
   @@index([status, deletedAt])
@@ -505,13 +453,11 @@ model UserOwnership {
   id            Int      @id @default(autoincrement())
   userId        Int
   productId     Int
-  skuId         Int
   downloadUrl   String?  @db.VarChar(2000)
   downloadCount Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sku           SKU      @relation(fields: [skuId], references: [id], onDelete: Cascade)
   user          User     @relation("UserOwnerships", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
