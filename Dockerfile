@@ -41,8 +41,9 @@ COPY --from=build --chown=nestjs:nodejs /app/package.json ./package.json
 # một số service đọc file bằng path.resolve('src/...') (không phải dist/src) nên cần giữ nguyên cấu trúc thư mục src ở runtime
 COPY --from=build --chown=nestjs:nodejs /app/src/shared/email-templates ./src/shared/email-templates
 COPY --from=build --chown=nestjs:nodejs /app/src/i18n ./src/i18n
-# MediaModule tự mkdir thư mục này lúc khởi động, cần tồn tại sẵn với quyền ghi cho user non-root
-RUN mkdir -p /app/upload && chown nestjs:nodejs /app/upload
+# MediaModule tự mkdir upload lúc khởi động; I18nModule tự ghi i18n.generated.ts mỗi lần start
+# → cả hai cần tồn tại sẵn với quyền ghi cho user non-root
+RUN mkdir -p /app/upload /app/src/generated && chown -R nestjs:nodejs /app/upload /app/src/generated
 
 USER nestjs
 
