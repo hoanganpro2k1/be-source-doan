@@ -38,6 +38,11 @@ COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=build --chown=nestjs:nodejs /app/package.json ./package.json
+# một số service đọc file bằng path.resolve('src/...') (không phải dist/src) nên cần giữ nguyên cấu trúc thư mục src ở runtime
+COPY --from=build --chown=nestjs:nodejs /app/src/shared/email-templates ./src/shared/email-templates
+COPY --from=build --chown=nestjs:nodejs /app/src/i18n ./src/i18n
+# MediaModule tự mkdir thư mục này lúc khởi động, cần tồn tại sẵn với quyền ghi cho user non-root
+RUN mkdir -p /app/upload && chown nestjs:nodejs /app/upload
 
 USER nestjs
 
