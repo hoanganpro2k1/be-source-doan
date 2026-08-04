@@ -27,6 +27,7 @@ import { PaymentModule } from 'src/routes/payment/payment.module';
 import { BlogModule } from 'src/routes/blog/blog.module';
 import { TransactionModule } from 'src/routes/transaction/transaction.module';
 import { ReviewModule } from 'src/routes/review/review.module';
+import { NotificationModule } from 'src/routes/notification/notification.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ReviewModule } from 'src/routes/review/review.module';
     BlogModule,
     TransactionModule,
     ReviewModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [

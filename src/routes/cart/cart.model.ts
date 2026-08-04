@@ -37,6 +37,8 @@ export const CartItemDetailSchema = z.object({
           }),
         ),
       }).omit({
+        // driveUrl không được raw SQL trả về (list2 dùng $queryRaw) và cũng không nên lộ link tải ở giỏ hàng
+        driveUrl: true,
         createdById: true,
         updatedById: true,
         deletedById: true,
