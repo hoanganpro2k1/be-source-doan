@@ -56,6 +56,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.4.0
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.4.2
       googleapis:
         specifier: ^171.4.0
         version: 171.4.0
@@ -153,9 +156,6 @@ importers:
       bullmq:
         specifier: ^5.79.2
         version: 5.79.2
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.4.2
       eslint:
         specifier: ^9.18.0
         version: 9.39.4(jiti@2.7.0)

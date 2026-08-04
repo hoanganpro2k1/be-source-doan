@@ -25,8 +25,6 @@ RUN pnpm build
 FROM base AS prod-deps
 COPY pnpm-lock.yaml package.json pnpm-workspace.yaml* ./
 RUN pnpm install --frozen-lockfile --prod
-COPY prisma ./prisma
-RUN pnpm prisma generate
 
 # ---------- Runner ----------
 FROM node:${NODE_VERSION} AS runner
