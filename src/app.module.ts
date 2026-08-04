@@ -34,10 +34,11 @@ import { ReviewModule } from 'src/routes/review/review.module';
       fallbackLanguage: 'en',
       loaderOptions: {
         path: path.resolve('src/i18n/'),
-        watch: true,
+        watch: process.env.NODE_ENV !== 'production',
       },
       resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
-      typesOutputPath: path.resolve('src/generated/i18n.generated.ts'),
+      // Chỉ tự sinh type hỗ trợ IDE lúc dev; production không cần và không có quyền ghi
+      typesOutputPath: process.env.NODE_ENV !== 'production' ? path.resolve('src/generated/i18n.generated.ts') : undefined,
     }),
     SharedModule,
     AuthModule,
