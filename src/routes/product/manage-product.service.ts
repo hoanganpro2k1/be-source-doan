@@ -50,6 +50,7 @@ export class ManageProductService {
       isPublic: props.query.isPublic,
       minPrice: props.query.minPrice,
       maxPrice: props.query.maxPrice,
+      techStack: props.query.techStack,
       categories: props.query.categories,
       name: props.query.name,
       orderBy: props.query.orderBy,

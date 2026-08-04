@@ -16,6 +16,7 @@ export class ProductService {
       isPublic: true,
       minPrice: props.query.minPrice,
       maxPrice: props.query.maxPrice,
+      techStack: props.query.techStack,
       categories: props.query.categories,
       name: props.query.name,
       createdById: props.query.createdById,

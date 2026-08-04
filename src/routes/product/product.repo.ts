@@ -23,6 +23,7 @@ export class ProductRepo {
     categories,
     minPrice,
     maxPrice,
+    techStack,
     createdById,
     isPublic,
     languageId,
@@ -35,6 +36,7 @@ export class ProductRepo {
     categories?: number[];
     minPrice?: number;
     maxPrice?: number;
+    techStack?: string[];
     createdById?: number;
     isPublic?: boolean;
     languageId: string;
@@ -78,6 +80,9 @@ export class ProductRepo {
         gte: minPrice,
         lte: maxPrice,
       };
+    }
+    if (techStack && techStack.length > 0) {
+      where.techStack = { hasSome: techStack };
     }
     // Mặc định sort theo createdAt mới nhất
     let caculatedOrderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] = {
